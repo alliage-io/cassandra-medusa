@@ -493,16 +493,20 @@ class Cassandra(object):
             return '{}<{}>'.format(self.__class__.__qualname__, self._tag)
 
     class Snapshot(object):
-        def __init__(self, parent, tag):
+        def __init__(self, parent, tag, delete_on_exit=True):
             self._parent = parent
             self._tag = tag
+            self._delete_on_exit = delete_on_exit
 
         def __enter__(self):
             return self
 
         def __exit__(self, exc_type, exc_val, exc_tb):
-            logging.debug('Cleaning up Cassandra snapshot')
-            self.delete()
+            if self._delete_on_exit:
+                logging.debug('Cleaning up Cassandra snapshot')
+                self.delete()
+            else:
+                logging.debug('Not cleaning up Cassandra snapshot')
 
         @property
         def cassandra(self):
@@ -553,9 +557,9 @@ class Cassandra(object):
             if snapshot.is_dir()
         }
 
-    def get_snapshot(self, tag):
+    def get_snapshot(self, tag, delete_on_exit=True):
         if any(self.root.glob(self.SNAPSHOT_PATTERN.format(tag))):
-            return Cassandra.Snapshot(self, tag)
+            return Cassandra.Snapshot(self, tag, delete_on_exit)
 
         raise KeyError('Snapshot {} does not exist'.format(tag))
 
